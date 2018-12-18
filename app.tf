@@ -81,7 +81,7 @@ module "elb" {
       lb_protocol       	= "HTTP"
     },
   ]
-
+ 
   health_check = [
     {
       target              = "TCP:80"
