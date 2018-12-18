@@ -37,9 +37,9 @@ data "aws_ami" "amazon_linux" {
 ##############################################################
 
 module "iam" {
-	source 		= "modules/iam"
+  source    = "modules/iam"
 
-	name 			= "${var.name}"
+  name      = "${var.name}"
 }
 
 ##############################################################
@@ -47,16 +47,16 @@ module "iam" {
 ##############################################################
 
 module "ec2_sg" {
-  source 									= "github.com/terraform-aws-modules/terraform-aws-security-group"
+  source                  = "github.com/terraform-aws-modules/terraform-aws-security-group"
 
-  name        						= "${var.name}-app-sg"
-  description 						= "Security group for application tier"
-  vpc_id      						= "${var.vpc_id}"
+  name                    = "${var.name}-app-sg"
+  description             = "Security group for application tier"
+  vpc_id                  = "${var.vpc_id}"
 
   ingress_cidr_blocks     = ["0.0.0.0/0"]
   ingress_rules           = ["ssh-tcp", "http-80-tcp", "https-443-tcp"]
-  egress_rules 						= ["all-all"]
-  egress_cidr_blocks    	= ["0.0.0.0/0"]
+  egress_rules            = ["all-all"]
+  egress_cidr_blocks      = ["0.0.0.0/0"]
 }
 
 
@@ -65,20 +65,20 @@ module "ec2_sg" {
 ##############################################################
 
 module "elb" {
-  source 									= "github.com/terraform-aws-modules/terraform-aws-elb"
+  source                  = "github.com/terraform-aws-modules/terraform-aws-elb"
 
-  name 										= "${var.name}-elb"
+  name                    = "${var.name}-elb"
 
-  subnets         				= ["${data.aws_subnet_ids.all.ids}"]
-  security_groups 				= ["${module.ec2_sg.this_security_group_id}"]
-  internal        				= false
+  subnets                 = ["${data.aws_subnet_ids.all.ids}"]
+  security_groups         = ["${module.ec2_sg.this_security_group_id}"]
+  internal                = false
 
   listener = [
     {
-      instance_port     	= "80"
-      instance_protocol 	= "HTTP"
-      lb_port           	= "80"
-      lb_protocol       	= "HTTP"
+      instance_port       = "80"
+      instance_protocol   = "HTTP"
+      lb_port             = "80"
+      lb_protocol         = "HTTP"
     },
   ]
  
@@ -109,27 +109,27 @@ module "elb" {
 ##############################################################
 
 module "asg" {
-  source 											= "github.com/terraform-aws-modules/terraform-aws-autoscaling"
+  source                      = "github.com/terraform-aws-modules/terraform-aws-autoscaling"
 
-  name 												= "${var.name}-app"
+  name                        = "${var.name}-app"
 
-  lc_name 										= "${var.name}-lc"
+  lc_name                     = "${var.name}-lc"
 
   associate_public_ip_address = true
-  image_id        						= "${data.aws_ami.amazon_linux.id}"
-  iam_instance_profile 				= "${module.iam.arn}"
-  key_name										= "${var.key_pair}"
-  instance_type   						= "${var.instance_type}"
-  security_groups 						= ["${module.ec2_sg.this_security_group_id}"]
-  load_balancers  						= ["${module.elb.this_elb_id}"]
+  image_id                    = "${data.aws_ami.amazon_linux.id}"
+  iam_instance_profile        = "${module.iam.arn}"
+  key_name                    = "${var.key_pair}"
+  instance_type               = "${var.instance_type}"
+  security_groups             = ["${module.ec2_sg.this_security_group_id}"]
+  load_balancers              = ["${module.elb.this_elb_id}"]
 
   user_data = <<-EOF
                 #!/bin/bash
                 yum -y update
-								yum install -y httpd
-								service httpd start
-								chkconfig httpd on
-								EOF
+                yum install -y httpd
+                service httpd start
+                chkconfig httpd on
+                EOF
 
   ebs_block_device = [
     {
@@ -157,14 +157,14 @@ module "asg" {
 
   tags = [
     {
-      key                 	= "env"
-      value               	= "dev"
-      propagate_at_launch 	= true
+      key                   = "env"
+      value                 = "dev"
+      propagate_at_launch   = true
     },
     {
-      key                 	= "owner"
-      value               	= "dhirajnarwani"
-      propagate_at_launch 	= true
+      key                   = "owner"
+      value                 = "dhirajnarwani"
+      propagate_at_launch   = true
     },
   ]
 }
@@ -174,11 +174,11 @@ module "asg" {
 ##############################################################
 
 resource "aws_autoscaling_policy" "asg_policy" {
-  name                   		= "${var.name}-app-asg-policy"
-  scaling_adjustment     		= "${var.scaling_adjustment}"
-  adjustment_type        		= "ChangeInCapacity"
-  cooldown               		= 300
-  autoscaling_group_name 		= "${module.asg.this_autoscaling_group_name}"
+  name                      = "${var.name}-app-asg-policy"
+  scaling_adjustment        = "${var.scaling_adjustment}"
+  adjustment_type           = "ChangeInCapacity"
+  cooldown                  = 300
+  autoscaling_group_name    = "${module.asg.this_autoscaling_group_name}"
 }
 
 ##############################################################
@@ -186,33 +186,33 @@ resource "aws_autoscaling_policy" "asg_policy" {
 ##############################################################
 
 resource "aws_cloudwatch_metric_alarm" "cw_alarm_cpu_utilisation" {
-  alarm_name 								= "${var.name}-app-CPUUtilization"
-  comparison_operator 			= "GreaterThanOrEqualToThreshold"
-  evaluation_periods 				= "2"
-  metric_name 							= "CPUUtilization"
-  namespace 								= "AWS/EC2"
-  period 										= "60"
-  statistic 								= "Average"
-  threshold 								= "${var.cpu_threshold}"
+  alarm_name                = "${var.name}-app-CPUUtilization"
+  comparison_operator       = "GreaterThanOrEqualToThreshold"
+  evaluation_periods        = "2"
+  metric_name               = "CPUUtilization"
+  namespace                 = "AWS/EC2"
+  period                    = "60"
+  statistic                 = "Average"
+  threshold                 = "${var.cpu_threshold}"
   dimensions {
-    AutoScalingGroupName 		= "${module.asg.this_autoscaling_group_name}"
+    AutoScalingGroupName    = "${module.asg.this_autoscaling_group_name}"
   }
-  alarm_description 				= "75% cpu utilisation reached"
-  alarm_actions     				= ["${aws_autoscaling_policy.asg_policy.arn}"]
+  alarm_description         = "75% cpu utilisation reached"
+  alarm_actions             = ["${aws_autoscaling_policy.asg_policy.arn}"]
 }
 
 resource "aws_cloudwatch_metric_alarm" "cw_alarm_unhealthy" {
-  alarm_name	 							= "${var.name}-app-UnHealthyHostCount"
-  alarm_description 				= "ELB reports unhealthy registered instance(s)"
-  comparison_operator 			= "GreaterThanThreshold"
-  evaluation_periods 				= "2"
-  metric_name 							= "UnHealthyHostCount"
-  namespace 								= "AWS/ELB"
-  period 										= "60"
-  statistic 								= "Sum"
-  threshold 								= "${var.alarm_threshold}"
+  alarm_name                = "${var.name}-app-UnHealthyHostCount"
+  alarm_description         = "ELB reports unhealthy registered instance(s)"
+  comparison_operator       = "GreaterThanThreshold"
+  evaluation_periods        = "2"
+  metric_name               = "UnHealthyHostCount"
+  namespace                 = "AWS/ELB"
+  period                    = "60"
+  statistic                 = "Sum"
+  threshold                 = "${var.alarm_threshold}"
   dimensions {
-    LoadBalancerName 				= "${module.elb.this_elb_name}"
+    LoadBalancerName        = "${module.elb.this_elb_name}"
   }
 }
 
